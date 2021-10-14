@@ -2,46 +2,41 @@ import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torchmetrics
 from torchvision.models import resnet18
 
 
-class CaptchaModule(pl.LightningModule):
-    def __init__(self, lr: float = 1e-4, pretrained=False):
+class BikeModule(pl.LightningModule):
+    def __init__(self, num_classes: int, lr: float = 1e-3, pretrained=True):
         super().__init__()
-        self.backbone = resnet18(pretrained=pretrained)
-        self.fc = nn.Linear(self.backbone.fc.in_features, 1)
-        self.backbone.fc = nn.Identity()
+        self.resnet = resnet18(pretrained=pretrained)
+        self.resnet.fc = torch.nn.Linear(self.resnet.fc.in_features, num_classes)
         self.lr = lr
+        self.loss_fn = torch.nn.CrossEntropyLoss()
+        self.acc_fn = torchmetrics.Accuracy()
 
     def forward(self, x):
-        # in lightning, forward defines the prediction/inference actions
-        embedding = self.backbone(x)
-        output = 100 * self.fc(embedding).sigmoid()
-
-        return output
-
-    @staticmethod
-    def _abs(output, y):
-        return torch.abs(output - y)
+        return self.resnet(x)
 
     def training_step(self, batch, batch_idx):
         x, y = batch
         output = self.forward(x)
-        loss = F.mse_loss(output, y)
-        abs_ = CaptchaModule._abs(output, y).mean()
+        loss = self.loss_fn(output, y)
+        acc = self.acc_fn(output, y)
 
         self.log("train_loss", loss)
-        self.log("train_abs", abs_)
+        self.log("train_acc", acc)
+
         return loss
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
         output = self.forward(x)
-        loss = F.mse_loss(output, y)
-        abs_ = CaptchaModule._abs(output, y).mean()
+        loss = self.loss_fn(output, y)
+        acc = self.acc_fn(output, y)
 
         self.log("val_loss", loss)
-        self.log("val_abs", abs_)
+        self.log("val_acc", acc)
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)

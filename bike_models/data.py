@@ -4,6 +4,7 @@ import pytorch_lightning as pl
 import torch
 import torchvision
 from PIL import Image
+from torch.utils.data import DataLoader
 from torchvision.datasets import ImageFolder
 
 _MEAN = [0.485, 0.456, 0.406]
