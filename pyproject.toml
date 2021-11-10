@@ -8,6 +8,7 @@ authors = ["sami jaghouar <sami.jaghouar@hotmail.fr>"]
 python = "^3.8"
 torch = "^1.9.1"
 torchvision = "^0.10.1"
+vision-transformers = {git = "https://github.com/samsja/pytorch-vision-transformers", rev = "0.1.0"}
 
 [tool.poetry.dev-dependencies]
 jupyterlab = "^3.1.12"

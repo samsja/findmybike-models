@@ -1,3 +1,4 @@
+import copy
 from typing import Callable, Optional, Tuple
 
 import pytorch_lightning as pl
@@ -6,21 +7,12 @@ import torchvision
 from PIL import Image
 from torch.utils.data import DataLoader
 from torchvision.datasets import ImageFolder
+from vision_transformers.data.utils.augmentation import (
+    get_transforms,
+    get_transforms_val,
+)
 
-_MEAN = [0.485, 0.456, 0.406]
-_STD = [0.229, 0.224, 0.225]
 _IMAGE_SHAPE = (244, 244)
-
-
-def get_transforms(image_shape: Tuple[int, int]) -> Callable:
-
-    all_transform = [
-        torchvision.transforms.Resize(image_shape),
-        torchvision.transforms.ToTensor(),
-        torchvision.transforms.Normalize(mean=_MEAN, std=_STD),
-    ]
-
-    return torchvision.transforms.Compose(all_transform)
 
 
 class BikeDataSet(ImageFolder):
@@ -46,18 +38,26 @@ class BikeDataModule(pl.LightningDataModule):
 
         _VAL_PERCENTAGE = 0.1
 
-        dataset = BikeDataSet(self.data_path, get_transforms(_IMAGE_SHAPE))
+        dataset_original = BikeDataSet(self.data_path, get_transforms(_IMAGE_SHAPE))
 
-        val_len = int(_VAL_PERCENTAGE * len(dataset))
+        dataset_for_val = copy.deepcopy(dataset_original)
 
-        self.train_dataset, self.val_dataset = torch.utils.data.random_split(
-            dataset,
-            [
-                len(dataset) - val_len,
-                val_len,
-            ],
-            generator=torch.Generator().manual_seed(42),
-        )
+        val_len = int(_VAL_PERCENTAGE * len(dataset_original))
+
+        def get_split(dataset):
+            return torch.utils.data.random_split(
+                dataset,
+                [
+                    len(dataset) - val_len,
+                    val_len,
+                ],
+                generator=torch.Generator().manual_seed(42),
+            )
+
+        self.train_dataset, _ = get_split(dataset_original)
+        _, self.val_dataset = get_split(dataset_for_val)
+
+        dataset_for_val.transform = get_transforms_val(_IMAGE_SHAPE)
 
     def train_dataloader(self):
         return DataLoader(
