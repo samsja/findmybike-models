@@ -69,6 +69,7 @@ callbacks = [
     ModelCheckpoint(
         dirpath=model_path,
         monitor="val_acc",
+        mode="max",
         save_top_k=3,
         filename="{epoch}-{val_abs:.2f}-{val_loss:.2f}",
         save_last=True,
@@ -85,3 +86,18 @@ trainer = pl.Trainer(
 )
 
 trainer.fit(model, data)
+
+# +
+## Convert model to pure pytorch
+# -
+
+os.listdir(model_path)
+
+# + jupyter={"outputs_hidden": true} tags=[]
+model.load_from_checkpoint(f"{model_path}/last.ckpt", num_classes=3)
+# -
+
+import torch
+
+model.model
+torch.save(model.model.state_dict(), f"{model_path}/pytorch.ckpt")
